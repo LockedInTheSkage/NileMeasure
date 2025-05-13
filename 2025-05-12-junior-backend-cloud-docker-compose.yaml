@@ -19,7 +19,7 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=7fb3232841bd35feb7a5
       - DOCKER_INFLUXDB_INIT_ORG=acme_corp
       - DOCKER_INFLUXDB_INIT_BUCKET=the_bucket
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=7fb3232841bd35feb7a5
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
     restart: always
     
   sensors:
@@ -38,7 +38,7 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=7fb3232841bd35feb7a5
+      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
       - INFLUXDB_BUCKET=the_bucket
     restart: always
@@ -51,7 +51,7 @@ services:
       - influxdb
     environment:
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=7fb3232841bd35feb7a5
+      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
       - INFLUXDB_BUCKET=the_bucket
     restart: always

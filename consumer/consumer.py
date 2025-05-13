@@ -29,10 +29,7 @@ class DataConsumer:
         """Set up connections to InfluxDB and NATS."""
         # Connect to InfluxDB
         logger.info(f"Connecting to InfluxDB at {self.influx_url}")
-        logger.info(f"Using token: {self.influx_token}")
-        logger.info(f"Using org: {self.influx_org}")
-        logger.info(f"Using bucket: {self.influx_bucket}")
-        
+        logger.info(f"InfluxDB token: {self.influx_token}")
         self.influx_client = InfluxDBClient(
             url=self.influx_url,
             token=self.influx_token,
