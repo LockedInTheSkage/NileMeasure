@@ -17,7 +17,7 @@ if [ ! -f "2025-05-12-junior-backend-cloud-docker-compose.yaml" ]; then
 fi
 
 echo "Building and starting services..."
-docker compose -f 2025-05-12-junior-backend-cloud-docker-compose.yaml up -d --build
+docker compose -f 2025-05-12-junior-backend-cloud-docker-compose.yaml up -d --build --force-recreate
 
 if [ $? -eq 0 ]; then
   echo 

@@ -37,7 +37,7 @@ class BaseSensor:
 
     def format_reading(self, value):
         """Format the reading as a JSON string."""
-        timestamp = datetime.utcnow().isoformat() + "Z"
+        timestamp = datetime.now().isoformat() + "Z"
         data = {
             "sensorId": self.sensorId,
             "sensorType": self.sensorType,

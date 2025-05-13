@@ -11,7 +11,7 @@ COPY go.sum* ./
 RUN go mod tidy && go mod download -x
 
 # Build the application
-RUN go build -o consumer .
+RUN go build -o processor .
 
 # Use a small alpine image for the final container
 FROM alpine:3.19
@@ -19,16 +19,7 @@ FROM alpine:3.19
 WORKDIR /app
 
 # Copy the binary from the builder stage
-COPY --from=builder /app/consumer .
+COPY --from=builder /app/processor .
 
 # Run the application
-CMD ["./consumer"]
-
-
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# COPY *.py .
-
-# CMD ["python", "consumer.py"]
-
+CMD ["./processor"]
