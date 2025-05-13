@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sensor Data Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sensor Data Dashboard</h1>
+        </header>
+        
+        <div class="dashboard">
+            <div class="sidebar">
+                <div class="filter-panel">
+                    <h2>Filters</h2>
+                    <form id="filter-form">
+                        <div class="form-group">
+                            <label for="sensor-type">Sensor Type</label>
+                            <select id="sensor-type">
+                                <option value="">All Types</option>
+                                <option value="temperature">Temperature</option>
+                                <option value="humidity">Humidity</option>
+                                <option value="electricity">Electricity</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="location">Location</label>
+                            <select id="location">
+                                <option value="">All Locations</option>
+                                <!-- Will be populated via GraphQL -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sensor-id">Sensor ID</label>
+                            <select id="sensor-id">
+                                <option value="">All Sensors</option>
+                                <!-- Will be populated via GraphQL -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="time-range">Time Range</label>
+                            <select id="time-range">
+                                <option value="1h">Last Hour</option>
+                                <option value="3h">Last 3 Hours</option>
+                                <option value="6h">Last 6 Hours</option>
+                                <option value="12h">Last 12 Hours</option>
+                                <option value="24h">Last 24 Hours</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn">Apply Filters</button>
+                    </form>
+                </div>
+                
+                <div class="sensor-list">
+                    <h2>Available Sensors</h2>
+                    <ul id="sensors-container">
+                        <!-- Will be populated via GraphQL -->
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div class="charts">
+                    <div class="chart-container">
+                        <h2 id="chart-title">Sensor Data</h2>
+                        <canvas id="data-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="data-table">
+                    <h2>Recent Readings</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Sensor ID</th>
+                                <th>Type</th>
+                                <th>Location</th>
+                                <th>Value</th>
+                                <th>Unit</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="readings-table">
+                            <!-- Will be populated via GraphQL -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Sensor Data System &copy; 2025</p>
+        </footer>
+    </div>
+    
+    <script src="/static/app.js"></script>
+</body>
+</html>

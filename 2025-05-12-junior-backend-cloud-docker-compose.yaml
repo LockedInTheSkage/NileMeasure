@@ -1,0 +1,61 @@
+services:
+  nats:
+    image: nats:2.11
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: -m 8222
+    restart: always
+  influxdb:
+    image: influxdb:2
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb2-data:/var/lib/influxdb2
+      - influxdb2-config:/etc/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=7fb3232841bd35feb7a5
+      - DOCKER_INFLUXDB_INIT_ORG=acme_corp
+      - DOCKER_INFLUXDB_INIT_BUCKET=the_bucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=7fb3232841bd35feb7a5
+    restart: always
+    
+  sensors:
+    build: ./sensors
+    depends_on:
+      - nats
+    environment:
+      - NATS_URL=nats://nats:4222
+    restart: always
+    
+  consumer:
+    build: ./consumer
+    depends_on:
+      - nats
+      - influxdb
+    environment:
+      - NATS_URL=nats://nats:4222
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=7fb3232841bd35feb7a5
+      - INFLUXDB_ORG=acme_corp
+      - INFLUXDB_BUCKET=the_bucket
+    restart: always
+    
+  graphql:
+    build: ./graphql
+    ports:
+      - "8000:8000"
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=7fb3232841bd35feb7a5
+      - INFLUXDB_ORG=acme_corp
+      - INFLUXDB_BUCKET=the_bucket
+    restart: always
+
+volumes:
+  influxdb2-data:
+  influxdb2-config:
