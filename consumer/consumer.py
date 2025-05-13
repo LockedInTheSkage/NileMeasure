@@ -47,15 +47,15 @@ class DataConsumer:
         """Store data in InfluxDB."""
         try:
             # Create a point with the sensor data
-            point = Point(data["sensor_type"]) \
-                .tag("sensor_id", data["sensor_id"]) \
+            point = Point(data["sensorType"]) \
+                .tag("sensorId", data["sensorId"]) \
                 .tag("location", data["location"]) \
                 .field("value", data["value"]) \
                 .time(data["timestamp"])
             
             # Write to InfluxDB
             self.write_api.write(bucket=self.influx_bucket, record=point)
-            logger.info(f"Stored data for {data['sensor_type']} sensor {data['sensor_id']}")
+            logger.info(f"Stored data for {data['sensorType']} sensor {data['sensorId']}")
         except Exception as e:
             logger.error(f"Error storing data: {e}")
 

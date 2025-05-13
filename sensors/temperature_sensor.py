@@ -4,10 +4,10 @@ import time
 import random
 
 class TemperatureSensor(BaseSensor):
-    def __init__(self, sensor_id, location, min_value=10.0, max_value=35.0, interval=5):
+    def __init__(self, sensorId, location, min_value=10.0, max_value=35.0, interval=5):
         super().__init__(
-            sensor_id=sensor_id,
-            sensor_type="temperature",
+            sensorId=sensorId,
+            sensorType="temperature",
             location=location,
             unit="°C",
             min_value=min_value,

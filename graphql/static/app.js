@@ -35,7 +35,7 @@ async function loadLocations() {
         query {
             locations {
                 name
-                sensor_count
+                sensorCount
             }
         }
     `;
@@ -54,7 +54,7 @@ async function loadLocations() {
     data.data.locations.forEach(location => {
         const option = document.createElement('option');
         option.value = location.name;
-        option.textContent = `${location.name} (${location.sensor_count})`;
+        option.textContent = `${location.name} (${location.sensorCount})`;
         locationSelect.appendChild(option);
     });
 }
@@ -64,8 +64,8 @@ async function loadSensors() {
     const query = `
         query {
             sensors {
-                sensor_id
-                sensor_type
+                sensorId
+                sensorType
                 location
             }
         }
@@ -85,8 +85,8 @@ async function loadSensors() {
     // Add new options
     data.data.sensors.forEach(sensor => {
         const option = document.createElement('option');
-        option.value = sensor.sensor_id;
-        option.textContent = sensor.sensor_id;
+        option.value = sensor.sensorId;
+        option.textContent = sensor.sensorId;
         sensorIdSelect.appendChild(option);
     });
     
@@ -96,10 +96,10 @@ async function loadSensors() {
     
     const sensorsByType = {};
     data.data.sensors.forEach(sensor => {
-        if (!sensorsByType[sensor.sensor_type]) {
-            sensorsByType[sensor.sensor_type] = [];
+        if (!sensorsByType[sensor.sensorType]) {
+            sensorsByType[sensor.sensorType] = [];
         }
-        sensorsByType[sensor.sensor_type].push(sensor);
+        sensorsByType[sensor.sensorType].push(sensor);
     });
     
     for (const [type, sensors] of Object.entries(sensorsByType)) {
@@ -109,11 +109,11 @@ async function loadSensors() {
         
         sensors.forEach(sensor => {
             const sensorItem = document.createElement('li');
-            sensorItem.textContent = `${sensor.sensor_id} (${sensor.location})`;
+            sensorItem.textContent = `${sensor.sensorId} (${sensor.location})`;
             sensorItem.addEventListener('click', () => {
-                document.getElementById('sensor-type').value = sensor.sensor_type;
+                document.getElementById('sensor-type').value = sensor.sensorType;
                 document.getElementById('location').value = sensor.location;
-                document.getElementById('sensor-id').value = sensor.sensor_id;
+                document.getElementById('sensor-id').value = sensor.sensorId;
                 document.getElementById('filter-form').dispatchEvent(new Event('submit'));
             });
             sensorItem.style.cursor = 'pointer';
@@ -136,16 +136,16 @@ async function loadReadings() {
     
     const query = `
         query ($sensorType: String, $location: String, $sensorId: String, $startTime: String, $endTime: String) {
-            sensor_readings(
-                sensor_type: $sensorType,
+            sensorReadings(
+                sensorType: $sensorType,
                 location: $location,
-                sensor_id: $sensorId,
-                start_time: $startTime,
-                end_time: $endTime,
+                sensorId: $sensorId,
+                startTime: $startTime,
+                endTime: $endTime,
                 limit: 100
             ) {
-                sensor_id
-                sensor_type
+                sensorId
+                sensorType
                 location
                 value
                 unit
@@ -163,9 +163,9 @@ async function loadReadings() {
     };
 
     const data = await fetchGraphQL(query, variables);
-    if (!data || !data.data || !data.data.sensor_readings) return;
+    if (!data || !data.data || !data.data.sensorReadings) return;
     
-    const readings = data.data.sensor_readings;
+    const readings = data.data.sensorReadings;
     
     // Update table
     updateReadingsTable(readings);
@@ -200,8 +200,8 @@ function updateReadingsTable(readings) {
         const formattedTime = timestamp.toLocaleString();
         
         row.innerHTML = `
-            <td>${reading.sensor_id}</td>
-            <td>${reading.sensor_type}</td>
+            <td>${reading.sensorId}</td>
+            <td>${reading.sensorType}</td>
             <td>${reading.location}</td>
             <td>${reading.value}</td>
             <td>${reading.unit}</td>
@@ -221,9 +221,9 @@ function updateChart(readings) {
     const datasetsBySensorId = {};
     
     readings.forEach(reading => {
-        if (!datasetsBySensorId[reading.sensor_id]) {
-            datasetsBySensorId[reading.sensor_id] = {
-                label: `${reading.sensor_id} (${reading.location})`,
+        if (!datasetsBySensorId[reading.sensorId]) {
+            datasetsBySensorId[reading.sensorId] = {
+                label: `${reading.sensorId} (${reading.location})`,
                 data: [],
                 borderColor: getRandomColor(),
                 backgroundColor: 'transparent',
@@ -232,7 +232,7 @@ function updateChart(readings) {
             };
         }
         
-        datasetsBySensorId[reading.sensor_id].data.push({
+        datasetsBySensorId[reading.sensorId].data.push({
             x: new Date(reading.timestamp),
             y: reading.value
         });
@@ -240,7 +240,7 @@ function updateChart(readings) {
     
     // Get unit from any reading if available
     const unit = readings.length > 0 ? readings[0].unit : '';
-    const sensorType = readings.length > 0 ? readings[0].sensor_type : 'Sensor';
+    const sensorType = readings.length > 0 ? readings[0].sensorType : 'Sensor';
     
     // Update chart title
     document.getElementById('chart-title').textContent = `${sensorType.charAt(0).toUpperCase() + sensorType.slice(1)} Data ${unit ? '(' + unit + ')' : ''}`;

@@ -25,8 +25,8 @@ query_api = influx_client.query_api()
 # Define GraphQL types
 @strawberry.type
 class SensorReading:
-    sensor_id: str
-    sensor_type: str
+    sensorId: str
+    sensorType: str
     location: str
     value: float
     unit: str
@@ -35,12 +35,12 @@ class SensorReading:
 @strawberry.type
 class LocationInfo:
     name: str
-    sensor_count: int
+    sensorCount: int
 
 @strawberry.type
 class SensorInfo:
-    sensor_id: str
-    sensor_type: str
+    sensorId: str
+    sensorType: str
     location: str
     
 def get_all_locations() -> List[LocationInfo]:
@@ -66,7 +66,7 @@ def get_all_locations() -> List[LocationInfo]:
                     location_counts[location] = location_counts.get(location, 0) + 1
         
         return [
-            LocationInfo(name=location, sensor_count=count)
+            LocationInfo(name=location, sensorCount=count)
             for location, count in location_counts.items()
         ]
     except Exception as e:
@@ -78,8 +78,8 @@ def get_all_sensors() -> List[SensorInfo]:
     query = f'''
     from(bucket: "{INFLUXDB_BUCKET}")
         |> range(start: -1h)
-        |> group(columns: ["sensor_id", "location", "_measurement"])
-        |> distinct(column: "sensor_id")
+        |> group(columns: ["sensorId", "location", "_measurement"])
+        |> distinct(column: "sensorId")
         |> yield()
     '''
     
@@ -90,8 +90,8 @@ def get_all_sensors() -> List[SensorInfo]:
         for table in tables:
             for record in table.records:
                 sensor = SensorInfo(
-                    sensor_id=record.values.get("sensor_id", ""),
-                    sensor_type=record.values.get("_measurement", ""),
+                    sensorId=record.values.get("sensorId", ""),
+                    sensorType=record.values.get("_measurement", ""),
                     location=record.values.get("location", "")
                 )
                 sensors.append(sensor)
@@ -102,32 +102,32 @@ def get_all_sensors() -> List[SensorInfo]:
         return []
 
 def get_sensor_readings(
-    sensor_type: Optional[str] = None,
-    sensor_id: Optional[str] = None,
+    sensorType: Optional[str] = None,
+    sensorId: Optional[str] = None,
     location: Optional[str] = None,
-    start_time: Optional[str] = None,
-    end_time: Optional[str] = None,
+    startTime: Optional[str] = None,
+    endTime: Optional[str] = None,
     limit: int = 100
 ) -> List[SensorReading]:
     """Query sensor readings from InfluxDB with filters."""
     # Set default time range if not provided
-    if not start_time:
-        start_time = (datetime.utcnow() - timedelta(hours=1)).isoformat() + "Z"
-    if not end_time:
-        end_time = datetime.utcnow().isoformat() + "Z"
+    if not startTime:
+        startTime = (datetime.utcnow() - timedelta(hours=1)).isoformat() + "Z"
+    if not endTime:
+        endTime = datetime.utcnow().isoformat() + "Z"
     
     # Build the Flux query
     query = f'''
     from(bucket: "{INFLUXDB_BUCKET}")
-        |> range(start: {start_time}, stop: {end_time})
+        |> range(start: {startTime}, stop: {endTime})
     '''
     
     # Add filters if provided
-    if sensor_type:
-        query += f'|> filter(fn: (r) => r._measurement == "{sensor_type}")\n'
+    if sensorType:
+        query += f'|> filter(fn: (r) => r._measurement == "{sensorType}")\n'
     
-    if sensor_id:
-        query += f'|> filter(fn: (r) => r.sensor_id == "{sensor_id}")\n'
+    if sensorId:
+        query += f'|> filter(fn: (r) => r.sensorId == "{sensorId}")\n'
     
     if location:
         query += f'|> filter(fn: (r) => r.location == "{location}")\n'
@@ -147,11 +147,11 @@ def get_sensor_readings(
         for table in tables:
             for record in table.records:
                 reading = SensorReading(
-                    sensor_id=record.values.get("sensor_id", ""),
-                    sensor_type=record.values.get("_measurement", ""),
+                    sensorId=record.values.get("sensorId", ""),
+                    sensorType=record.values.get("_measurement", ""),
                     location=record.values.get("location", ""),
                     value=record.values.get("_value", 0.0),
-                    unit=get_unit_by_sensor_type(record.values.get("_measurement", "")),
+                    unit=get_unit_by_sensorType(record.values.get("_measurement", "")),
                     timestamp=record.values.get("_time").isoformat()
                 )
                 readings.append(reading)
@@ -161,34 +161,34 @@ def get_sensor_readings(
         print(f"Error querying InfluxDB: {e}")
         return []
 
-def get_unit_by_sensor_type(sensor_type: str) -> str:
+def get_unit_by_sensorType(sensorType: str) -> str:
     """Return the appropriate unit for a sensor type."""
     units = {
         "temperature": "°C",
         "humidity": "%",
         "electricity": "kW"
     }
-    return units.get(sensor_type, "")
+    return units.get(sensorType, "")
 
 # Define GraphQL resolvers
 @strawberry.type
 class Query:
     @strawberry.field
-    def sensor_readings(
+    def sensorReadings(
         self, 
-        sensor_type: Optional[str] = None,
-        sensor_id: Optional[str] = None,
+        sensorType: Optional[str] = None,
+        sensorId: Optional[str] = None,
         location: Optional[str] = None,
-        start_time: Optional[str] = None,
-        end_time: Optional[str] = None,
+        startTime: Optional[str] = None,
+        endTime: Optional[str] = None,
         limit: int = 100
     ) -> List[SensorReading]:
         return get_sensor_readings(
-            sensor_type=sensor_type,
-            sensor_id=sensor_id,
+            sensorType=sensorType,
+            sensorId=sensorId,
             location=location,
-            start_time=start_time,
-            end_time=end_time,
+            startTime=startTime,
+            endTime=endTime,
             limit=limit
         )
     

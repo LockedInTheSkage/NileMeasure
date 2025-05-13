@@ -4,10 +4,10 @@ import math
 import time
 
 class ElectricityUsageSensor(BaseSensor):
-    def __init__(self, sensor_id, location, min_value=0.1, max_value=5.0, interval=5):
+    def __init__(self, sensorId, location, min_value=0.1, max_value=5.0, interval=5):
         super().__init__(
-            sensor_id=sensor_id,
-            sensor_type="electricity",
+            sensorId=sensorId,
+            sensorType="electricity",
             location=location,
             unit="kW",
             min_value=min_value,

@@ -4,10 +4,10 @@ import math
 import time
 
 class HumiditySensor(BaseSensor):
-    def __init__(self, sensor_id, location, min_value=30.0, max_value=80.0, interval=5):
+    def __init__(self, sensorId, location, min_value=30.0, max_value=80.0, interval=5):
         super().__init__(
-            sensor_id=sensor_id,
-            sensor_type="humidity",
+            sensorId=sensorId,
+            sensorType="humidity",
             location=location,
             unit="%",
             min_value=min_value,
