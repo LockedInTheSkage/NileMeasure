@@ -1,6 +1,61 @@
 # Sensor Data Simulation System
 
-This project implements a complete sensor data simulation system using Docker containers, including:
+This projec### Running the System
+
+1. Clone the repository
+2. (Optional) Create a `.env` file with your database credentials or let the start script create one for you
+3. Run the start script:
+   ```
+   ./start.sh
+   ```
+4. Access the web interface at http://localhost:8000
+
+### Environment Configuration
+
+The system uses an `.env` file to store sensitive configuration values. If this file doesn't exist when you run `start.sh`, a sample file with random credentials will be created automatically.
+
+You can customize the following variables in the `.env` file:
+
+```
+# InfluxDB Configuration
+INFLUXDB_ADMIN_USERNAME=admin
+INFLUXDB_ADMIN_PASSWORD=YourSecurePassword
+INFLUXDB_ORG=acme_corp
+INFLUXDB_BUCKET=sensor_data
+INFLUXDB_AGGREGATED_BUCKET=aggregated_data
+INFLUXDB_ADMIN_TOKEN=YourInfluxDBToken
+
+# Alert Configuration
+TEMP_ALERT_THRESHOLD=30.0
+```
+
+## Security
+
+### Credential Management
+
+The system uses environment variables for sensitive configuration, following best practices:
+
+1. Database credentials and tokens are stored in a `.env` file that is not committed to version control
+2. Email credentials are stored in a separate configuration file (`alert/config/email_config.json`)
+3. Sample configuration files are provided as templates (`.env.sample` and `email_config.sample.json`)
+
+### Generating New Credentials
+
+To generate new credentials for InfluxDB:
+
+```bash
+# Generate a new random password (16 characters, hexadecimal)
+openssl rand -hex 16
+
+# Generate a new random token (64 characters, base64-encoded)
+openssl rand -base64 64
+```
+
+For Gmail accounts used in email alerts, generate an App Password:
+1. Go to your Google Account > Security > 2-Step Verification
+2. At the bottom, select "App passwords"
+3. Create a new app password for this application
+4. Use this password in the `email_config.json` fileents a complete sensor data simulation system using Docker containers, including:
 
 1. Sensor simulators (temperature, humidity, electricity) that generate realistic data
 2. A message broker (NATS) for pub/sub communication
@@ -45,11 +100,12 @@ This project implements a complete sensor data simulation system using Docker co
 ### Running the System
 
 1. Clone the repository
-2. Run the start script:
+2. Enter environment variables in the `.env` file
+3. Run the start script:
    ```
    ./start.sh
    ```
-3. Access the graphQL interface at http://localhost:8000/graphql
+4. Access the graphQL interface at http://localhost:8000/graphql
 
 
 ## GraphQL API Usage

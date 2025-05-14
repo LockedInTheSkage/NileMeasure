@@ -1,0 +1,2 @@
+# Directory is ignored by git to protect sensitive configurations
+email_config.json

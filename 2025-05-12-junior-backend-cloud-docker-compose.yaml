@@ -1,3 +1,5 @@
+
+
 services:
   nats:
     image: nats:2.11
@@ -16,12 +18,33 @@ services:
       - influxdb2-config:/etc/influxdb2
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=7fb3232841bd35feb7a5
-      - DOCKER_INFLUXDB_INIT_ORG=acme_corp
-      - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
     restart: always
+  
+  influxdb-init:
+    image: influxdb:2
+    depends_on:
+      - influxdb
+    restart: "no"
+    entrypoint: ["/bin/bash"]
+    command: >
+      -c '
+      echo "Waiting for InfluxDB to be ready...";
+      for i in {1..30}; do
+        curl -s http://influxdb:8086/ping > /dev/null && break || sleep 2;
+      done;
+      echo "Creating aggregated_data bucket...";
+      influx bucket create --name ${INFLUXDB_AGGREGATED_BUCKET} --org ${INFLUXDB_ORG} --token ${INFLUXDB_ADMIN_TOKEN} --host http://influxdb:8086;
+      echo "InfluxDB initialization completed.";
+      '
+    environment:
+      - INFLUXDB_ADMIN_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_AGGREGATED_BUCKET=${INFLUXDB_AGGREGATED_BUCKET}
   
   sensors:
     build: ./sensors
@@ -30,7 +53,6 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
     restart: always
-  
   consumer:
     build: ./consumer
     depends_on:
@@ -39,10 +61,10 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
-      - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_BUCKET=sensor_data
-      - TEMP_ALERT_THRESHOLD=30.0
+      - INFLUXDB_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET}
+      - TEMP_ALERT_THRESHOLD=${TEMP_ALERT_THRESHOLD}
       - ALERT_STATE_FILE=/app/data/alert_state.json 
     volumes:
       - consumer-data:/app/data
@@ -58,7 +80,6 @@ services:
     depends_on:
       - nats
     restart: on-failure
-  
   processor:
     build: ./processor
     depends_on:
@@ -68,13 +89,12 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
-      - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_SOURCE_BUCKET=sensor_data
-      - INFLUXDB_TARGET_BUCKET=aggregated_data
+      - INFLUXDB_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_SOURCE_BUCKET=${INFLUXDB_BUCKET}
+      - INFLUXDB_TARGET_BUCKET=${INFLUXDB_AGGREGATED_BUCKET}
       - AGGREGATION_INTERVAL=30s
     restart: always
-  
   historian:
     build: ./historian
     ports:
@@ -84,10 +104,10 @@ services:
       - influxdb-init
     environment:
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
-      - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_RAW_BUCKET=sensor_data
-      - INFLUXDB_AGGREGATED_BUCKET=aggregated_data
+      - INFLUXDB_TOKEN=${INFLUXDB_ADMIN_TOKEN}
+      - INFLUXDB_ORG=${INFLUXDB_ORG}
+      - INFLUXDB_RAW_BUCKET=${INFLUXDB_BUCKET}
+      - INFLUXDB_AGGREGATED_BUCKET=${INFLUXDB_AGGREGATED_BUCKET}
     restart: always
 
 volumes:

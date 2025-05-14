@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "Starting sensor data simulation system..."
-echo "This will start NATS, InfluxDB, sensors, consumer, and GraphQL services."
+echo "This will start NATS, InfluxDB, sensors, consumer, processor, alert, and GraphQL services."
 echo 
 
 # Check if Docker is running
@@ -14,6 +14,53 @@ fi
 if [ ! -f "2025-05-12-junior-backend-cloud-docker-compose.yaml" ]; then
   echo "Error: Docker Compose file not found."
   exit 1
+fi
+
+# Check if the .env file exists
+if [ ! -f ".env" ]; then
+  echo "Warning: .env file not found. Creating a sample .env file with random credentials."
+  echo "Please review the file and modify if needed before continuing."
+  
+  # Generate random password and token
+  RANDOM_PASSWORD=$(openssl rand -hex 16)
+  RANDOM_TOKEN=$(openssl rand -base64 64)
+  
+  cat > .env << EOF
+# InfluxDB Configuration
+INFLUXDB_ADMIN_USERNAME=admin
+INFLUXDB_ADMIN_PASSWORD=$RANDOM_PASSWORD
+INFLUXDB_ORG=acme_corp
+INFLUXDB_BUCKET=sensor_data
+INFLUXDB_AGGREGATED_BUCKET=aggregated_data
+INFLUXDB_ADMIN_TOKEN=$RANDOM_TOKEN
+
+# Alert Configuration
+TEMP_ALERT_THRESHOLD=30.0
+EOF
+  
+  echo "Sample .env file created with the following credentials:"
+  echo "Username: admin"
+  echo "Password: $RANDOM_PASSWORD"
+  echo "Token: $RANDOM_TOKEN"
+  echo "These credentials are stored in the .env file."
+  echo "Note: You'll need these credentials to access the InfluxDB UI."
+  echo "Press Enter to continue or Ctrl+C to abort and modify the file."
+  read
+fi
+
+# Check if email config file exists
+if [ ! -f "alert/config/email_config.json" ]; then
+  if [ -f "alert/config/email_config.sample.json" ]; then
+    echo "Warning: email_config.json not found. Creating from template."
+    cp alert/config/email_config.sample.json alert/config/email_config.json
+    echo "Created email_config.json from template."
+    echo "Please update the email settings in alert/config/email_config.json before using the alert service."
+    echo "Press Enter to continue or Ctrl+C to abort and modify the file."
+    read
+  else
+    echo "Warning: Neither email_config.json nor email_config.sample.json found."
+    echo "The email alert service may not function correctly."
+  fi
 fi
 
 echo "Building and starting services..."

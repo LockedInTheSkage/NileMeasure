@@ -1,1 +1,15 @@
+# Ignore sensitive configuration files
 alert/config/email_config.json
+.env
+
+# Don't ignore sample configuration files
+!alert/config/email_config.sample.json
+!.env.sample
+
+# Ignore data directories
+**/data
+
+# Common development environment files
+.vscode/
+.idea/
+*.log

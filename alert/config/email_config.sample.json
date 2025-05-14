@@ -1,0 +1,5 @@
+{
+  "from_email": "your.email@gmail.com",
+  "from_password": "your-app-password",
+  "to_email": "recipient@example.com"
+}
