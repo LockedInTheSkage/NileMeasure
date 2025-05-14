@@ -15,3 +15,9 @@ HTTP response headers: HTTPHeaderDict({'Content-Type': 'application/json; charse
 HTTP response body: {"code":"unauthorized","message":"unauthorized access"}
 
 ts=2025-05-13T13:57:47.098561Z lvl=info msg=Unauthorized log_id=0wUUlR5W000 error="authorization not found"
+
+
+## May 14, 2025
+
+(on aggregator.go)
+This file aggregates the values found within the given measurement into min max and sum. However, there is a misunderstanding. The data we are querying on have measurements in the format like the one in sensordata and that is inserted in dataconsumer. These are the values we want to aggreagte, and preferably one aggregation per sensor in a location, as well as per sensortype. Can you make this? Split the aggregation task into seperate files, one per sensortype. humidity, electricity and temperature. Do this even if the files get very small

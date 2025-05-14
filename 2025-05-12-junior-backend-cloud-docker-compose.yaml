@@ -42,6 +42,20 @@ services:
       - INFLUXDB_ORG=acme_corp
       - INFLUXDB_BUCKET=the_bucket
     restart: always
+
+  processor:
+    build: ./processor
+    depends_on:
+      - nats
+      - influxdb
+    environment:
+      - NATS_URL=nats://nats:4222
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
+      - INFLUXDB_ORG=acme_corp
+      - INFLUXDB_BUCKET=the_bucket
+      - AGGREGATION_INTERVAL=35s
+    restart: always
     
   graphql:
     build: ./graphql
