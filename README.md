@@ -5,11 +5,9 @@ This project implements a complete sensor data simulation system using Docker co
 1. Sensor simulators (temperature, humidity, electricity) that generate realistic data
 2. A message broker (NATS) for pub/sub communication
 3. A consumer that stores data in InfluxDB time-series database
-4. A GraphQL API with a web-based UI for visualizing the data
-
-## System Architecture
-
-![System Architecture](https://mermaid.ink/img/pako:eNqVkk9PwzAMxb-K5QsIVSs7IJRDJw47IA5oQquxCjRJlbhIaLvvTtqxrYWh7ZT4-fn9nNi5Yb1nJbM-wr5Hnfq3DdiO1A8HwXRjt4HfhbgKZbGxHVo_q0XSSRV8hLqA4nV9XzeQ68k6Y8cUwESj_UFMt6Q92MAvC-NLR4W-UtDV0JBLuq3EBHGPJDrQYw_fxA6LbwhpHNEjPYRgLM3JXDPtDvCEhm4a0qQXxFJnPjzadWQSKzDOOHlBiVnZooLb2IHF5WE-EzIHlbgQlkblDUkBT6gJVAQjkTaoDJoqEZSc9JxPiCbwUvWnb7JDK1S7P3pnWFlk_kpGjCcijWOlppHqiqxF0DwQNDiPyDu0fENh4F0n2B_3JiucfG7VPkucfz5kGKcXeq3AHWmW6eDJUuYfZ3D-D3mJIQbhQ8pcQa5B_xQ2TQwl2-T6_GqI6mLTXGTfWOGhZA?type=png)
+4. A data processor that aggregates sensor readings
+5. An email alert service that sends notifications based on predefined triggers
+6. A GraphQL API with a web-based UI for visualizing the data
 
 ## Services
 
@@ -21,12 +19,22 @@ This project implements a complete sensor data simulation system using Docker co
 ### Consumer
 - Subscribes to sensor data from NATS
 - Processes and stores data in InfluxDB
-- Handles error recovery and connection management
+- Sends alert messages when sensor values exceed thresholds
+
+### Processor
+- Aggregates sensor data over time periods
+- Calculates statistics (min, max, mean, sum, count)
+- Stores aggregated data for efficient querying
+
+### Alert Service
+- Listens for alert messages on NATS
+- Sends email notifications for critical conditions
+- Uses configurable email settings. Check `Email Alerts Configuration` for details
 
 ### GraphQL API
 - Provides a GraphQL interface to query sensor data
 - Includes filtering by sensor type, location, and time range
-- Offers a web-based dashboard for data visualization
+- Supports querying both raw and aggregated data
 
 ## Getting Started
 
@@ -41,48 +49,165 @@ This project implements a complete sensor data simulation system using Docker co
    ```
    ./start.sh
    ```
-3. Access the web interface at http://localhost:8000
+3. Access the graphQL interface at http://localhost:8000/graphql
 
-## Web Dashboard
 
-The web dashboard allows you to:
-- View real-time sensor data visualizations
-- Filter data by sensor type, location, and time range
-- Explore individual sensor readings in detail
+## GraphQL API Usage
+
+The system provides a GraphQL API with the following query types:
+
+### sensorReadings
+Retrieves raw sensor readings with optional filtering.
+
+Example query:
+```graphql
+query {
+  sensorReadings(
+    sensorType: "temperature", 
+    location: "living_room", 
+    startTime: "2025-05-13T00:00:00Z", 
+    endTime: "2025-05-14T00:00:00Z", 
+    limit: 10
+  ) {
+    sensorId
+    sensorType
+    location
+    value
+    unit
+    timestamp
+  }
+}
+```
+
+### aggregatedReadings
+Retrieves aggregated sensor data (min, max, mean, etc.).
+
+Example query:
+```graphql
+query {
+  aggregatedReadings(
+    sensorType: "humidity", 
+    location: "kitchen", 
+    limit: 5
+  ) {
+    sensorId
+    sensorType
+    location
+    min
+    max
+    mean
+    count
+    sum
+    unit
+    timestamp
+  }
+}
+```
+
+### sensors
+Lists all available sensors in the system.
+
+Example query:
+```graphql
+query {
+  sensors {
+    sensorId
+    sensorType
+    location
+  }
+}
+```
+
+### locations
+Lists all locations with sensor counts.
+
+Example query:
+```graphql
+query {
+  locations {
+    name
+    sensorCount
+  }
+}
+```
+
+## Email Alerts Configuration
+
+The system can send email alerts when sensor readings exceed predefined thresholds. To configure the email settings, modify the file at:
+
+```
+alert/config/email_config.json
+```
+
+The configuration requires the following fields:
+- `from_email`: The sender email address (Gmail account)
+- `from_password`: App password for Gmail (not your regular account password)
+- `to_email`: The recipient email address
+
+Example configuration:
+```json
+{
+  "from_email": "your.email@gmail.com",
+  "from_password": "your-app-password",
+  "to_email": "recipient@example.com"
+}
+```
 
 ## Development
-
 ### Project Structure
 ```
-├── 2025-05-12-junior-backend-cloud-docker-compose.yaml  # Main docker-compose file
-├── start.sh                                            # Startup script
-├── sensors/                                            # Sensor simulation service
+├── 2025-05-12-junior-backend-cloud-docker-compose.yaml
+├── start.sh
+├── sensors/
+│   ├── Dockerfile  
+│   ├── base_sensor.py
+│   ├── temperature_sensor.py
+│   ├── humidity_sensor.py
+│   ├── electricity_sensor.py
+│   ├── main.py
+│   └── requirements.txt
+├── consumer/
 │   ├── Dockerfile
-│   ├── base_sensor.py                                 # Base sensor class
-│   ├── temperature_sensor.py                          # Temperature sensor implementation
-│   ├── humidity_sensor.py                             # Humidity sensor implementation
-│   ├── electricity_sensor.py                          # Electricity usage sensor implementation
-│   ├── main.py                                        # Main sensor application
-│   └── requirements.txt                               # Python dependencies
-├── consumer/                                           # Data consumer service
+│   ├── main.go
+│   ├── dataconsumer.go
+│   ├── sensordata.go
+│   ├── alert.go
+│   ├── config.go
+│   ├── go.mod
+│   └── go.sum
+├── processor/
 │   ├── Dockerfile
-│   ├── consumer.py                                    # Consumer implementation
-│   └── requirements.txt                               # Python dependencies
-└── graphql/                                            # GraphQL API service
+│   ├── main.go
+│   ├── base_aggregator.go
+│   ├── temperature_aggregator.go
+│   ├── humidity_aggregator.go
+│   ├── electricity_aggregator.go
+│   ├── config.go
+│   ├── go.mod
+│   └── go.sum
+├── alert/
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── config/
+│   │   ├── email_config.json
+│   │   └── README.md
+└── historian/
     ├── Dockerfile
-    ├── app.py                                         # GraphQL schema and resolvers
-    ├── main.py                                        # FastAPI application
-    ├── requirements.txt                               # Python dependencies
-    ├── templates/                                     # HTML templates
-    │   └── index.html                                # Dashboard template
-    └── static/                                        # Static assets
-        ├── styles.css                                # CSS styles
-        └── app.js                                    # JavaScript for dashboard
+    ├── app.py
+    ├── main.py
+    ├── strawberry_types.py
+    ├── requirements.txt
+    ├── templates/
+    │   └── index.html
+    └── static/
+        ├── styles.css
+        └── app.js
 ```
 
 ## Technologies Used
 
-- **Python**: Primary programming language
+- **Python**: Primary programming language for sensors, API, and alert services
+- **Go**: Used for consumer and data processor services
 - **NATS**: Message broker for pub/sub
 - **InfluxDB**: Time-series database
 - **FastAPI**: Web framework
@@ -98,6 +223,16 @@ To add a new sensor type:
 2. Inherit from `BaseSensor` class
 3. Implement the `generate_reading` method
 4. Add instances of your new sensor in `main.py`
+5. Create a corresponding aggregator in the `processor` directory
+6. Update the consumer to handle the new sensor type
+
+## Configuring Alert Thresholds
+
+Alert thresholds are defined in the consumer service. To modify the thresholds:
+
+1. Navigate to the `consumer/alert.go` file
+2. Update the threshold values for existing sensor types
+3. Add new threshold configurations for any new sensor types
 
 ## License
 

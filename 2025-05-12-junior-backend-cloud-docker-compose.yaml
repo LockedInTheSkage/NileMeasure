@@ -22,13 +22,6 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
     restart: always
-  influxdb-init:
-    build: ./influxdb-init
-    depends_on:
-      - influxdb
-    environment:
-      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
-    restart: "no"
   
   sensors:
     build: ./sensors
