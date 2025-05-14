@@ -16,7 +16,8 @@ type HumidityAggregator struct {
 	influxURL    string
 	influxToken  string
 	influxOrg    string
-	influxBucket string
+	sourceBucket string
+	targetBucket string
 
 	// Aggregation configuration
 	aggregationInterval string
@@ -39,7 +40,8 @@ func NewHumidityAggregator(config *Config) *HumidityAggregator {
 		influxURL:           config.InfluxURL,
 		influxToken:         config.InfluxToken,
 		influxOrg:           config.InfluxOrg,
-		influxBucket:        config.InfluxBucket,
+		sourceBucket:        config.SourceBucket,
+		targetBucket:        config.TargetBucket,
 		aggregationInterval: config.AggregationInterval,
 		ctx:                 ctx,
 		cancelFunc:          cancel,
@@ -54,10 +56,11 @@ func (a *HumidityAggregator) GetCancelFunc() context.CancelFunc {
 // Setup initializes connections to InfluxDB
 func (a *HumidityAggregator) Setup() error {
 	log.Printf("[Humidity] Connecting to InfluxDB at %s", a.influxURL)
+	log.Printf("[Humidity] Reading from bucket: %s, writing to bucket: %s", a.sourceBucket, a.targetBucket)
 
 	a.influxClient = influxdb2.NewClient(a.influxURL, a.influxToken)
 	a.queryAPI = a.influxClient.QueryAPI(a.influxOrg)
-	a.writeAPI = a.influxClient.WriteAPIBlocking(a.influxOrg, a.influxBucket)
+	a.writeAPI = a.influxClient.WriteAPIBlocking(a.influxOrg, a.targetBucket)
 
 	log.Println("[Humidity] Aggregator setup complete")
 	return nil
@@ -113,7 +116,7 @@ from(bucket: "%s")
   |> group(columns: ["sensorId", "location"])
   |> aggregateWindow(every: %s, fn: %s, createEmpty: false)
   |> yield(name: "%s")
-`, a.influxBucket, a.aggregationInterval, sensorType, a.aggregationInterval, aggType, aggType)
+`, a.sourceBucket, a.aggregationInterval, sensorType, a.aggregationInterval, aggType, aggType)
 
 		// Execute the query
 		result, err := a.queryAPI.Query(context.Background(), flux)

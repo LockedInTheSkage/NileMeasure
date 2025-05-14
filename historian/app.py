@@ -14,7 +14,8 @@ from strawberry_types import SensorReading, LocationInfo, SensorInfo, Aggregated
 INFLUXDB_URL = os.environ.get("INFLUXDB_URL", "http://influxdb:8086")
 INFLUXDB_TOKEN = os.environ.get("INFLUXDB_TOKEN", "")
 INFLUXDB_ORG = os.environ.get("INFLUXDB_ORG", "acme_corp")
-INFLUXDB_BUCKET = os.environ.get("INFLUXDB_BUCKET", "the_bucket")
+INFLUXDB_RAW_BUCKET = os.environ.get("INFLUXDB_RAW_BUCKET", "sensor_data")
+INFLUXDB_AGGREGATED_BUCKET = os.environ.get("INFLUXDB_AGGREGATED_BUCKET", "aggregated_data")
 
 # Initialize InfluxDB client
 influx_client = InfluxDBClient(
@@ -31,7 +32,7 @@ def get_all_locations() -> List[LocationInfo]:
     query = f'''
     import "influxdata/influxdb/schema"
     
-    schema.measurements(bucket: "{INFLUXDB_BUCKET}")
+    schema.measurements(bucket: "{INFLUXDB_RAW_BUCKET}")
         |> schema.tagKeys()
         |> filter(fn: (r) => r._value == "location")
         |> group()
@@ -59,7 +60,7 @@ def get_all_locations() -> List[LocationInfo]:
 def get_all_sensors() -> List[SensorInfo]:
     """Get all sensors."""
     query = f'''
-    from(bucket: "{INFLUXDB_BUCKET}")
+    from(bucket: "{INFLUXDB_RAW_BUCKET}")
         |> range(start: -1h)
         |> group(columns: ["sensorId", "location", "_measurement"])
         |> distinct(column: "sensorId")
@@ -101,7 +102,7 @@ def get_sensor_readings(
     
     # Build the Flux query
     query = f'''
-    from(bucket: "{INFLUXDB_BUCKET}")
+    from(bucket: "{INFLUXDB_RAW_BUCKET}")
         |> range(start: {startTime}, stop: {endTime})
     '''
     
@@ -174,7 +175,7 @@ def get_aggregated_readings(
         
         # Build the Flux query
         query = f'''
-        from(bucket: "{INFLUXDB_BUCKET}")
+        from(bucket: "{INFLUXDB_AGGREGATED_BUCKET}")
             |> range(start: {startTime}, stop: {endTime})
             |> filter(fn: (r) => r._measurement == "{measurement}")
         '''

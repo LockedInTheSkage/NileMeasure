@@ -10,7 +10,8 @@ type Config struct {
 	InfluxURL    string
 	InfluxToken  string
 	InfluxOrg    string
-	InfluxBucket string
+	SourceBucket string
+	TargetBucket string
 
 	// Aggregation configuration
 	AggregationInterval string
@@ -22,7 +23,8 @@ func NewConfig() *Config {
 		InfluxURL:           getEnv("INFLUXDB_URL", "http://influxdb:8086"),
 		InfluxToken:         getEnv("INFLUXDB_TOKEN", ""),
 		InfluxOrg:           getEnv("INFLUXDB_ORG", "acme_corp"),
-		InfluxBucket:        getEnv("INFLUXDB_BUCKET", "the_bucket"),
+		SourceBucket:        getEnv("INFLUXDB_SOURCE_BUCKET", "sensor_data"),
+		TargetBucket:        getEnv("INFLUXDB_TARGET_BUCKET", "aggregated_data"),
 		AggregationInterval: getEnv("AGGREGATION_INTERVAL", "30m"),
 	}
 }

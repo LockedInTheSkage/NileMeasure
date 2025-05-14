@@ -16,7 +16,8 @@ type ElectricityAggregator struct {
 	influxURL    string
 	influxToken  string
 	influxOrg    string
-	influxBucket string
+	sourceBucket string
+	targetBucket string
 
 	// Aggregation configuration
 	aggregationInterval string
@@ -39,7 +40,8 @@ func NewElectricityAggregator(config *Config) *ElectricityAggregator {
 		influxURL:           config.InfluxURL,
 		influxToken:         config.InfluxToken,
 		influxOrg:           config.InfluxOrg,
-		influxBucket:        config.InfluxBucket,
+		sourceBucket:        config.SourceBucket,
+		targetBucket:        config.TargetBucket,
 		aggregationInterval: config.AggregationInterval,
 		ctx:                 ctx,
 		cancelFunc:          cancel,
@@ -54,10 +56,11 @@ func (a *ElectricityAggregator) GetCancelFunc() context.CancelFunc {
 // Setup initializes connections to InfluxDB
 func (a *ElectricityAggregator) Setup() error {
 	log.Printf("[Electricity] Connecting to InfluxDB at %s", a.influxURL)
+	log.Printf("[Electricity] Reading from bucket: %s, writing to bucket: %s", a.sourceBucket, a.targetBucket)
 	
 	a.influxClient = influxdb2.NewClient(a.influxURL, a.influxToken)
 	a.queryAPI = a.influxClient.QueryAPI(a.influxOrg)
-	a.writeAPI = a.influxClient.WriteAPIBlocking(a.influxOrg, a.influxBucket)
+	a.writeAPI = a.influxClient.WriteAPIBlocking(a.influxOrg, a.targetBucket)
 	
 	log.Println("[Electricity] Aggregator setup complete")
 	return nil
@@ -110,7 +113,7 @@ from(bucket: "%s")
   |> group(columns: ["sensorId", "location"])
   |> aggregateWindow(every: %s, fn: %s, createEmpty: false)
   |> yield(name: "%s")
-`, a.influxBucket, a.aggregationInterval, sensorType, a.aggregationInterval, aggType, aggType)
+`, a.sourceBucket, a.aggregationInterval, sensorType, a.aggregationInterval, aggType, aggType)
 
 		// Execute the query
 		result, err := a.queryAPI.Query(context.Background(), flux)
@@ -136,7 +139,7 @@ from(bucket: "%s")
 				continue
 			}
 
-			
+
 			sensorID := record.ValueByKey("sensorId").(string)
 			location := record.ValueByKey("location").(string)
 			timestamp := record.Time()

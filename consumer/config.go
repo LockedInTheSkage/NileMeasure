@@ -27,7 +27,7 @@ func NewConfig() *Config {
 		InfluxURL:          getEnv("INFLUXDB_URL", "http://influxdb:8086"),
 		InfluxToken:        getEnv("INFLUXDB_TOKEN", ""),
 		InfluxOrg:          getEnv("INFLUXDB_ORG", "acme_corp"),
-		InfluxBucket:       getEnv("INFLUXDB_BUCKET", "the_bucket"),
+		InfluxBucket:       getEnv("INFLUXDB_BUCKET", "sensor_data"),
 		NatsURL:            getEnv("NATS_URL", "nats://nats:4222"),
 		TempAlertThreshold: getEnvFloat("TEMP_ALERT_THRESHOLD", 30.0),
 		AlertStateFile:     getEnv("ALERT_STATE_FILE", "/app/data/alert_state.json"),

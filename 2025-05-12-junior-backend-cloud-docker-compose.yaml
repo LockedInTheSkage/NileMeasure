@@ -6,6 +6,7 @@ services:
       - "8222:8222"
     command: -m 8222
     restart: always
+  
   influxdb:
     image: influxdb:2
     ports:
@@ -18,10 +19,17 @@ services:
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
       - DOCKER_INFLUXDB_INIT_PASSWORD=7fb3232841bd35feb7a5
       - DOCKER_INFLUXDB_INIT_ORG=acme_corp
-      - DOCKER_INFLUXDB_INIT_BUCKET=the_bucket
+      - DOCKER_INFLUXDB_INIT_BUCKET=sensor_data
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
     restart: always
-    
+  influxdb-init:
+    build: ./influxdb-init
+    depends_on:
+      - influxdb
+    environment:
+      - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
+    restart: "no"
+  
   sensors:
     build: ./sensors
     depends_on:
@@ -29,6 +37,7 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
     restart: always
+  
   consumer:
     build: ./consumer
     depends_on:
@@ -39,12 +48,13 @@ services:
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_BUCKET=the_bucket
+      - INFLUXDB_BUCKET=sensor_data
       - TEMP_ALERT_THRESHOLD=30.0
-      - ALERT_STATE_FILE=/app/data/alert_state.json
+      - ALERT_STATE_FILE=/app/data/alert_state.json 
     volumes:
       - consumer-data:/app/data
     restart: always
+  
   alert:
     build: ./alert
     volumes:
@@ -55,32 +65,36 @@ services:
     depends_on:
       - nats
     restart: on-failure
-
+  
   processor:
     build: ./processor
     depends_on:
       - nats
       - influxdb
+      - influxdb-init
     environment:
       - NATS_URL=nats://nats:4222
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_BUCKET=the_bucket
+      - INFLUXDB_SOURCE_BUCKET=sensor_data
+      - INFLUXDB_TARGET_BUCKET=aggregated_data
       - AGGREGATION_INTERVAL=30s
     restart: always
-    
+  
   historian:
     build: ./historian
     ports:
       - "8000:8000"
     depends_on:
       - influxdb
+      - influxdb-init
     environment:
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
-      - INFLUXDB_BUCKET=the_bucket
+      - INFLUXDB_RAW_BUCKET=sensor_data
+      - INFLUXDB_AGGREGATED_BUCKET=aggregated_data
     restart: always
 
 volumes:
