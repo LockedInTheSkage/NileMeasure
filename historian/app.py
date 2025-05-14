@@ -6,7 +6,9 @@ import strawberry
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
 from influxdb_client import InfluxDBClient
-from pydantic import BaseModel
+from types import SensorReading, LocationInfo, SensorInfo
+
+
 
 # InfluxDB configuration
 INFLUXDB_URL = os.environ.get("INFLUXDB_URL", "http://influxdb:8086")
@@ -22,27 +24,8 @@ influx_client = InfluxDBClient(
 )
 query_api = influx_client.query_api()
 
-# Define GraphQL types
-@strawberry.type
-class SensorReading:
-    sensorId: str
-    sensorType: str
-    location: str
-    value: float
-    unit: str
-    timestamp: str
 
-@strawberry.type
-class LocationInfo:
-    name: str
-    sensorCount: int
 
-@strawberry.type
-class SensorInfo:
-    sensorId: str
-    sensorType: str
-    location: str
-    
 def get_all_locations() -> List[LocationInfo]:
     """Get all locations with sensor counts."""
     query = f'''
@@ -112,9 +95,9 @@ def get_sensor_readings(
     """Query sensor readings from InfluxDB with filters."""
     # Set default time range if not provided
     if not startTime:
-        startTime = (datetime.utcnow() - timedelta(hours=1)).isoformat() + "Z"
+        startTime = (datetime.now() - timedelta(hours=1)).isoformat() + "Z"
     if not endTime:
-        endTime = datetime.utcnow().isoformat() + "Z"
+        endTime = datetime.now().isoformat() + "Z"
     
     # Build the Flux query
     query = f'''
@@ -199,6 +182,8 @@ class Query:
     @strawberry.field
     def sensors(self) -> List[SensorInfo]:
         return get_all_sensors()
+
+
 
 # Create GraphQL schema
 schema = strawberry.Schema(query=Query)

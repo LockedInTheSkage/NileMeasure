@@ -57,8 +57,8 @@ services:
       - AGGREGATION_INTERVAL=35s
     restart: always
     
-  graphql:
-    build: ./graphql
+  historian:
+    build: ./historian
     ports:
       - "8000:8000"
     depends_on:
