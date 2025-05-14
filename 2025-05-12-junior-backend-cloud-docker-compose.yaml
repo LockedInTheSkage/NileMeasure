@@ -29,7 +29,6 @@ services:
     environment:
       - NATS_URL=nats://nats:4222
     restart: always
-    
   consumer:
     build: ./consumer
     depends_on:
@@ -41,7 +40,21 @@ services:
       - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
       - INFLUXDB_BUCKET=the_bucket
+      - TEMP_ALERT_THRESHOLD=30.0
+      - ALERT_STATE_FILE=/app/data/alert_state.json
+    volumes:
+      - consumer-data:/app/data
     restart: always
+  alert:
+    build: ./alert
+    volumes:
+      - ./alert/config:/app/config:ro
+    environment:
+      - CONFIG_PATH=/app/config/email_config.json
+      - NATS_URL=nats://nats:4222
+    depends_on:
+      - nats
+    restart: on-failure
 
   processor:
     build: ./processor
@@ -54,7 +67,7 @@ services:
       - INFLUXDB_TOKEN=IMpE2wU6uREqk7_jL2J7H1KMD3FQeNPfDGY5ieEGiZqHBZNWEkMx6DQUkPghPZqtpiV4CfUpaGIH2x0EoG3cxw==
       - INFLUXDB_ORG=acme_corp
       - INFLUXDB_BUCKET=the_bucket
-      - AGGREGATION_INTERVAL=35s
+      - AGGREGATION_INTERVAL=30s
     restart: always
     
   historian:
@@ -73,3 +86,4 @@ services:
 volumes:
   influxdb2-data:
   influxdb2-config:
+  consumer-data:

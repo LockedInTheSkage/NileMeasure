@@ -4,11 +4,12 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from strawberry.fastapi import GraphQLRouter
+import uvicorn
 
 from app import schema
 
 # Create FastAPI app
-app = FastAPI(title="Sensor Data GraphQL API")
+app_api = FastAPI(title="Sensor Data GraphQL API")
 
 # Set up templates
 templates = Jinja2Templates(directory="templates")
@@ -20,16 +21,15 @@ graphql_route = GraphQLRouter(
 )
 
 # Include GraphQL router
-app.include_router(graphql_route, prefix="/graphql")
+app_api.include_router(graphql_route, prefix="/graphql")
 
 # Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app_api.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/", response_class=HTMLResponse)
+@app_api.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """Serve the dashboard homepage."""
     return templates.TemplateResponse("index.html", {"request": request})
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app_api, host="0.0.0.0", port=8000)

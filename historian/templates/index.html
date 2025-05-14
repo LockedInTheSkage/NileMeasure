@@ -64,32 +64,68 @@
             </div>
             
             <div class="main-content">
-                <div class="charts">
-                    <div class="chart-container">
-                        <h2 id="chart-title">Sensor Data</h2>
-                        <canvas id="data-chart"></canvas>
+                <div class="data-view-tabs">
+                    <button id="raw-data-tab" class="tab-button active">Raw Data</button>
+                    <button id="aggregated-data-tab" class="tab-button">Aggregated Data</button>
+                </div>
+                
+                <div id="raw-data-view" class="data-view active">
+                    <div class="charts">
+                        <div class="chart-container">
+                            <h2 id="chart-title">Sensor Data</h2>
+                            <canvas id="data-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table">
+                        <h2>Recent Readings</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sensor ID</th>
+                                    <th>Type</th>
+                                    <th>Location</th>
+                                    <th>Value</th>
+                                    <th>Unit</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="readings-table">
+                                <!-- Will be populated via GraphQL -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
-                <div class="data-table">
-                    <h2>Recent Readings</h2>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Sensor ID</th>
-                                <th>Type</th>
-                                <th>Location</th>
-                                <th>Value</th>
-                                <th>Unit</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="readings-table">
-                            <!-- Will be populated via GraphQL -->
-                        </tbody>
-                    </table>
+                <div id="aggregated-data-view" class="data-view">
+                    <div class="charts">
+                        <div class="chart-container">
+                            <h2 id="aggregated-chart-title">Aggregated Sensor Data</h2>
+                            <canvas id="aggregated-data-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table">
+                        <h2>Aggregated Readings</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sensor ID</th>
+                                    <th>Type</th>
+                                    <th>Location</th>
+                                    <th>Min</th>
+                                    <th>Mean</th>
+                                    <th>Max</th>
+                                    <th>Unit</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aggregated-readings-table">
+                                <!-- Will be populated via GraphQL -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
         </div>
         
         <footer>

@@ -18,6 +18,9 @@ FROM alpine:3.19
 
 WORKDIR /app
 
+# Create a data directory for alert state storage
+RUN mkdir -p /app/data && chmod 777 /app/data
+
 # Copy the binary from the builder stage
 COPY --from=builder /app/consumer .
 

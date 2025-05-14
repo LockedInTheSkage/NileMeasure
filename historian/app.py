@@ -6,7 +6,7 @@ import strawberry
 from fastapi import FastAPI
 from strawberry.fastapi import GraphQLRouter
 from influxdb_client import InfluxDBClient
-from types import SensorReading, LocationInfo, SensorInfo
+from strawberry_types import SensorReading, LocationInfo, SensorInfo, AggregatedReading
 
 
 
@@ -144,6 +144,89 @@ def get_sensor_readings(
         print(f"Error querying InfluxDB: {e}")
         return []
 
+def get_aggregated_readings(
+    sensorType: Optional[str] = None,
+    sensorId: Optional[str] = None,
+    location: Optional[str] = None,
+    startTime: Optional[str] = None,
+    endTime: Optional[str] = None,
+    limit: int = 100
+) -> List[AggregatedReading]:
+    """Query aggregated sensor readings from InfluxDB with filters."""
+    # Set default time range if not provided
+    if not startTime:
+        startTime = (datetime.now() - timedelta(hours=24)).isoformat() + "Z"
+    if not endTime:
+        endTime = datetime.now().isoformat() + "Z"
+    
+    # Determine which aggregated measurements to query based on sensorType
+    measurements = []
+    if sensorType:
+        measurements = [f"{sensorType}_aggregated"]
+    else:
+        measurements = ["temperature_aggregated", "humidity_aggregated", "electricity_aggregated"]
+    
+    aggregated_readings = []
+    
+    for measurement in measurements:
+        # Extract the base sensor type from the measurement name
+        base_sensor_type = measurement.replace("_aggregated", "")
+        
+        # Build the Flux query
+        query = f'''
+        from(bucket: "{INFLUXDB_BUCKET}")
+            |> range(start: {startTime}, stop: {endTime})
+            |> filter(fn: (r) => r._measurement == "{measurement}")
+        '''
+        
+        if sensorId:
+            query += f'|> filter(fn: (r) => r.sensorId == "{sensorId}")\n'
+        
+        if location:
+            query += f'|> filter(fn: (r) => r.location == "{location}")\n'
+        
+        # Group by sensorId, location, and time to get the most recent readings
+        query += '''
+            |> pivot(rowKey:["_time"], columnKey: ["type"], valueColumn: "_value")
+            |> group(columns: ["sensorId", "location"])
+            |> sort(columns: ["_time"], desc: true)
+        '''
+        
+        if limit > 0:
+            query += f'|> limit(n: {limit})\n'
+        
+        try:
+            # Execute the query
+            tables = query_api.query(query)
+            
+            # Parse the results
+            for table in tables:
+                for record in table.records:
+                    # Check if all aggregation values are present
+                    mean_value = record.values.get("mean", 0.0)
+                    min_value = record.values.get("min", 0.0)
+                    max_value = record.values.get("max", 0.0)
+                    count_value = record.values.get("count", 0.0)
+                    sum_value = record.values.get("sum", 0.0)
+                    
+                    reading = AggregatedReading(
+                        sensorId=record.values.get("sensorId", ""),
+                        sensorType=base_sensor_type,
+                        location=record.values.get("location", ""),
+                        mean=mean_value,
+                        min=min_value,
+                        max=max_value,
+                        count=count_value,
+                        sum=sum_value,
+                        unit=get_unit_by_sensorType(base_sensor_type),
+                        timestamp=record.values.get("_time").isoformat()
+                    )
+                    aggregated_readings.append(reading)
+        except Exception as e:
+            print(f"Error querying InfluxDB for aggregated data: {e}")
+    
+    return aggregated_readings
+
 def get_unit_by_sensorType(sensorType: str) -> str:
     """Return the appropriate unit for a sensor type."""
     units = {
@@ -182,6 +265,25 @@ class Query:
     @strawberry.field
     def sensors(self) -> List[SensorInfo]:
         return get_all_sensors()
+    
+    @strawberry.field
+    def aggregatedReadings(
+        self, 
+        sensorType: Optional[str] = None,
+        sensorId: Optional[str] = None,
+        location: Optional[str] = None,
+        startTime: Optional[str] = None,
+        endTime: Optional[str] = None,
+        limit: int = 100
+    ) -> List[AggregatedReading]:
+        return get_aggregated_readings(
+            sensorType=sensorType,
+            sensorId=sensorId,
+            location=location,
+            startTime=startTime,
+            endTime=endTime,
+            limit=limit
+        )
 
 
 

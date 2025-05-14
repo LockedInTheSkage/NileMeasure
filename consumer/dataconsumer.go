@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
+	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
@@ -22,6 +25,10 @@ type DataConsumer struct { // something
 	// NATS configuration
 	natsURL string
 
+	// Alert configuration
+	tempAlertThreshold float64
+	alertStateFile     string
+
 	// Clients
 	influxClient influxdb2.Client
 	writeAPI     api.WriteAPI
@@ -37,13 +44,15 @@ func NewDataConsumer(config *Config) *DataConsumer {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &DataConsumer{
-		influxURL:    config.InfluxURL,
-		influxToken:  config.InfluxToken,
-		influxOrg:    config.InfluxOrg,
-		influxBucket: config.InfluxBucket,
-		natsURL:      config.NatsURL,
-		ctx:          ctx,
-		cancelFunc:   cancel,
+		influxURL:          config.InfluxURL,
+		influxToken:        config.InfluxToken,
+		influxOrg:          config.InfluxOrg,
+		influxBucket:       config.InfluxBucket,
+		natsURL:            config.NatsURL,
+		tempAlertThreshold: config.TempAlertThreshold,
+		alertStateFile:     config.AlertStateFile,
+		ctx:                ctx,
+		cancelFunc:         cancel,
 	}
 }
 
@@ -71,6 +80,33 @@ func (c *DataConsumer) Setup() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to NATS: %w", err)
 	}
+	
+	// Ensure alert state directory exists
+	alertDir := filepath.Dir(c.alertStateFile)
+	if err := os.MkdirAll(alertDir, 0755); err != nil {
+		log.Printf("Warning: Failed to create alert state directory: %v", err)
+	}
+
+	// Send a test email to verify the alert system
+	go func() {
+		// Wait a bit for all services to start up
+		time.Sleep(5 * time.Second)
+		
+		testData := SensorData{
+			SensorType: "temperature",
+			SensorID:   "test_sensor",
+			Location:   "Test Location",
+			Value:      35.0, // Above the threshold to trigger an alert
+			Timestamp:  time.Now(),
+		}
+		
+		log.Println("Sending test temperature alert email...")
+		if err := c.sendTestAlert(testData); err != nil {
+			log.Printf("Failed to send test alert: %v", err)
+		} else {
+			log.Println("Test alert sent successfully!")
+		}
+	}()
 
 	log.Println("Consumer setup complete")
 	return nil
@@ -104,6 +140,14 @@ func (c *DataConsumer) MessageHandler(msg *nats.Msg) {
 
 	// Store the data in InfluxDB
 	c.StoreData(data)
+	
+	// Check for temperature alerts
+	if data.SensorType == "temperature" && data.Value > c.tempAlertThreshold {
+		log.Printf("High temperature detected: %.2f°C at %s", data.Value, data.Location)
+		if c.shouldSendAlert() {
+			c.sendTemperatureAlert(data)
+		}
+	}
 }
 
 // SubscribeToSensors subscribes to all sensor topics

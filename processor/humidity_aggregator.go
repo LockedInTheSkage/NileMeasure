@@ -11,7 +11,7 @@ import (
 )
 
 // HumidityAggregator handles aggregating humidity data in InfluxDB
-type HumidityAggregator struct {	
+type HumidityAggregator struct {
 	// InfluxDB configuration
 	influxURL    string
 	influxToken  string
@@ -54,11 +54,11 @@ func (a *HumidityAggregator) GetCancelFunc() context.CancelFunc {
 // Setup initializes connections to InfluxDB
 func (a *HumidityAggregator) Setup() error {
 	log.Printf("[Humidity] Connecting to InfluxDB at %s", a.influxURL)
-	
+
 	a.influxClient = influxdb2.NewClient(a.influxURL, a.influxToken)
 	a.queryAPI = a.influxClient.QueryAPI(a.influxOrg)
 	a.writeAPI = a.influxClient.WriteAPIBlocking(a.influxOrg, a.influxBucket)
-	
+
 	log.Println("[Humidity] Aggregator setup complete")
 	return nil
 }
@@ -100,74 +100,75 @@ func (a *HumidityAggregator) RunAggregation() {
 	// Set sensor type for this aggregator
 	sensorType := "humidity"
 
-	flux := fmt.Sprintf(`
+	// Define the aggregation types to run
+	aggregationTypes := []string{"mean", "min", "max", "count"}
+
+	// Process each aggregation type
+	for _, aggType := range aggregationTypes {
+		// Build the Flux query for this aggregation type
+		flux := fmt.Sprintf(`
 from(bucket: "%s")
   |> range(start: -%s)
   |> filter(fn: (r) => r._measurement == "%s")
   |> group(columns: ["sensorId", "location"])
-  |> aggregateWindow(every: %s, fn: mean, createEmpty: false)
-  |> yield(name: "mean")
+  |> aggregateWindow(every: %s, fn: %s, createEmpty: false)
+  |> yield(name: "%s")
+`, a.influxBucket, a.aggregationInterval, sensorType, a.aggregationInterval, aggType, aggType)
 
-from(bucket: "%s")
-  |> range(start: -%s)
-  |> filter(fn: (r) => r._measurement == "%s")
-  |> group(columns: ["sensorId", "location"])
-  |> aggregateWindow(every: %s, fn: min, createEmpty: false)
-  |> yield(name: "min")
-
-from(bucket: "%s")
-  |> range(start: -%s)
-  |> filter(fn: (r) => r._measurement == "%s")
-  |> group(columns: ["sensorId", "location"])
-  |> aggregateWindow(every: %s, fn: max, createEmpty: false)
-  |> yield(name: "max")
-`, a.influxBucket, a.aggregationInterval, sensorType, 
-   a.aggregationInterval, a.influxBucket, a.aggregationInterval, 
-   sensorType, a.aggregationInterval, a.influxBucket, 
-   a.aggregationInterval, sensorType, a.aggregationInterval)
-
-	result, err := a.queryAPI.Query(context.Background(), flux)
-	if err != nil {
-		log.Printf("[Humidity] Query error: %v", err)
-		return
-	}
-
-	// Process and store the aggregated results
-	for result.Next() {
-		record := result.Record()
-		
-		// Get the query result name (mean, min, or max)
-		resultName := record.Result()
-		value := record.Value()
-		sensorID := record.ValueByKey("sensorId").(string)
-		location := record.ValueByKey("location").(string)
-		timestamp := record.Time()
-		
-		// Create a point with the aggregated value
-		point := influxdb2.NewPoint(
-			sensorType+"_aggregated",
-			map[string]string{
-				"sensorId": sensorID,
-				"location": location,
-				"type":     resultName,
-			},
-			map[string]interface{}{
-				"value": value,
-			},
-			timestamp,
-		)
-
-		err := a.writeAPI.WritePoint(context.Background(), point)
+		// Execute the query
+		result, err := a.queryAPI.Query(context.Background(), flux)
 		if err != nil {
-			log.Printf("[Humidity] Write error: %v", err)
-		} else {
-			log.Printf("[Humidity] Wrote aggregated point (%s) for sensor %s at %s: %v", 
-				resultName, sensorID, timestamp, value)
+			log.Printf("[Humidity] Query error for %s: %v", aggType, err)
+			continue
 		}
-	}
 
-	if result.Err() != nil {
-		log.Printf("[Humidity] Query parsing error: %v", result.Err())
+		// Process and store the aggregated results
+		for result.Next() {
+			record := result.Record()
+
+			value := record.Value()
+
+			// Check if the value is a float, if it is interger, convert it to float
+			if v, ok := value.(int64); ok {
+				value = float64(v)
+			} else if v, ok := value.(float64); ok {
+				value = v
+			} else {
+				log.Printf("[Temperature] Unexpected value type: %T", value)
+				continue
+			}
+
+
+			sensorID := record.ValueByKey("sensorId").(string)
+			location := record.ValueByKey("location").(string)
+			timestamp := record.Time()
+
+			// Create a point with the aggregated value
+			point := influxdb2.NewPoint(
+				sensorType+"_aggregated",
+				map[string]string{
+					"sensorId": sensorID,
+					"location": location,
+					"type":     aggType,
+				},
+				map[string]interface{}{
+					"value": value,
+				},
+				timestamp,
+			)
+
+			err := a.writeAPI.WritePoint(context.Background(), point)
+			if err != nil {
+				log.Printf("[Humidity] Write error: %v", err)
+			} else {
+				log.Printf("[Humidity] Wrote aggregated point (%s) for sensor %s at %s: %v",
+					aggType, sensorID, timestamp, value)
+			}
+		}
+
+		if result.Err() != nil {
+			log.Printf("[Humidity] Query parsing error for %s: %v", aggType, result.Err())
+		}
 	}
 }
 

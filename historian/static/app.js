@@ -1,8 +1,25 @@
 // GraphQL endpoint
 const GRAPHQL_URL = '/graphql';
 
-// Global chart reference
+// Global chart references
 let dataChart = null;
+let aggregatedDataChart = null;
+
+// Current data view mode
+let currentDataView = 'raw'; // 'raw' or 'aggregated'
+
+// Debug logging function
+function logDebug(message, data = null) {
+    const enableDebugLogging = true; // Set to false to disable all debug logs
+    
+    if (enableDebugLogging) {
+        if (data) {
+            console.log(`[DEBUG] ${message}`, data);
+        } else {
+            console.log(`[DEBUG] ${message}`);
+        }
+    }
+}
 
 // Fetch data using GraphQL
 async function fetchGraphQL(query, variables = {}) {
@@ -174,6 +191,63 @@ async function loadReadings() {
     updateChart(readings);
 }
 
+// Load aggregated sensor readings
+async function loadAggregatedReadings() {
+    logDebug("Loading aggregated sensor readings");
+    
+    const sensorType = document.getElementById('sensor-type').value;
+    const location = document.getElementById('location').value;
+    const sensorId = document.getElementById('sensor-id').value;
+    const timeRange = document.getElementById('time-range').value;
+    
+    logDebug("Filter criteria", { sensorType, location, sensorId, timeRange });
+    
+    // Calculate time range - use a longer range for aggregated data
+    const endTime = new Date().toISOString();
+    const startTime = new Date(Date.now() - parseTimeRange(timeRange) * 2).toISOString(); // Double the time range
+    
+    const query = `
+        query ($sensorType: String, $location: String, $sensorId: String, $startTime: String, $endTime: String) {
+            aggregatedReadings(
+                sensorType: $sensorType,
+                location: $location,
+                sensorId: $sensorId,
+                startTime: $startTime,
+                endTime: $endTime,
+                limit: 100
+            ) {
+                sensorId
+                sensorType
+                location
+                mean
+                min
+                max
+                unit
+                timestamp
+            }
+        }
+    `;
+    
+    const variables = {
+        sensorType: sensorType || null,
+        location: location || null,
+        sensorId: sensorId || null,
+        startTime,
+        endTime
+    };
+
+    const data = await fetchGraphQL(query, variables);
+    if (!data || !data.data || !data.data.aggregatedReadings) return;
+    
+    const readings = data.data.aggregatedReadings;
+    
+    // Update table
+    updateAggregatedReadingsTable(readings);
+    
+    // Update chart
+    updateAggregatedChart(readings);
+}
+
 // Parse time range string to milliseconds
 function parseTimeRange(timeRange) {
     const hours = parseInt(timeRange.replace('h', ''));
@@ -204,6 +278,40 @@ function updateReadingsTable(readings) {
             <td>${reading.sensorType}</td>
             <td>${reading.location}</td>
             <td>${reading.value}</td>
+            <td>${reading.unit}</td>
+            <td>${formattedTime}</td>
+        `;
+        
+        tableBody.appendChild(row);
+    });
+}
+
+// Update aggregated readings table
+function updateAggregatedReadingsTable(readings) {
+    const tableBody = document.getElementById('aggregated-readings-table');
+    tableBody.innerHTML = '';
+    
+    if (readings.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="8">No aggregated data available</td>';
+        tableBody.appendChild(row);
+        return;
+    }
+    
+    readings.forEach(reading => {
+        const row = document.createElement('tr');
+        
+        // Format timestamp
+        const timestamp = new Date(reading.timestamp);
+        const formattedTime = timestamp.toLocaleString();
+        
+        row.innerHTML = `
+            <td>${reading.sensorId}</td>
+            <td>${reading.sensorType}</td>
+            <td>${reading.location}</td>
+            <td>${reading.min.toFixed(2)}</td>
+            <td>${reading.mean.toFixed(2)}</td>
+            <td>${reading.max.toFixed(2)}</td>
             <td>${reading.unit}</td>
             <td>${formattedTime}</td>
         `;
@@ -298,6 +406,164 @@ function updateChart(readings) {
     });
 }
 
+// Update aggregated chart
+function updateAggregatedChart(readings) {
+    // Sort readings by timestamp
+    readings.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    // Group by sensor ID
+    const datasetsBySensorId = {};
+    
+    readings.forEach(reading => {
+        const sensorId = reading.sensorId;
+        
+        // Create datasets for min, mean, and max
+        if (!datasetsBySensorId[`${sensorId}-min`]) {
+            datasetsBySensorId[`${sensorId}-min`] = {
+                label: `${sensorId} (Min)`,
+                data: [],
+                borderColor: getRandomColor(),
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderDash: [5, 5],
+                tension: 0.1
+            };
+            
+            datasetsBySensorId[`${sensorId}-mean`] = {
+                label: `${sensorId} (Mean)`,
+                data: [],
+                borderColor: datasetsBySensorId[`${sensorId}-min`].borderColor,
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                tension: 0.1
+            };
+            
+            datasetsBySensorId[`${sensorId}-max`] = {
+                label: `${sensorId} (Max)`,
+                data: [],
+                borderColor: datasetsBySensorId[`${sensorId}-min`].borderColor,
+                backgroundColor: 'transparent',
+                borderWidth: 1,
+                borderDash: [5, 5],
+                tension: 0.1
+            };
+        }
+        
+        // Add data points
+        datasetsBySensorId[`${sensorId}-min`].data.push({
+            x: new Date(reading.timestamp),
+            y: reading.min
+        });
+        
+        datasetsBySensorId[`${sensorId}-mean`].data.push({
+            x: new Date(reading.timestamp),
+            y: reading.mean
+        });
+        
+        datasetsBySensorId[`${sensorId}-max`].data.push({
+            x: new Date(reading.timestamp),
+            y: reading.max
+        });
+    });
+    
+    // Get unit from any reading if available
+    const unit = readings.length > 0 ? readings[0].unit : '';
+    const sensorType = readings.length > 0 ? readings[0].sensorType : 'Sensor';
+    
+    // Update chart title
+    document.getElementById('aggregated-chart-title').textContent = `Aggregated ${sensorType.charAt(0).toUpperCase() + sensorType.slice(1)} Data ${unit ? '(' + unit + ')' : ''}`;
+    
+    // Destroy existing chart if it exists
+    if (aggregatedDataChart) {
+        aggregatedDataChart.destroy();
+    }
+    
+    // Create new chart
+    const ctx = document.getElementById('aggregated-data-chart').getContext('2d');
+    aggregatedDataChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: Object.values(datasetsBySensorId)
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'hour',
+                        displayFormats: {
+                            hour: 'MM-dd HH:mm'
+                        },
+                        tooltipFormat: 'yyyy-MM-dd HH:mm:ss'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: unit
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        filter: function(item) {
+                            // Hide the range dataset from the legend
+                            return !item.text.includes('Range');
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const datasetLabel = context.dataset.label || '';
+                            const value = context.parsed.y.toFixed(2);
+                            
+                            if (datasetLabel.includes('Range')) {
+                                return null; // Don't show tooltip for range dataset
+                            }
+                            
+                            return `${datasetLabel}: ${value} ${unit}`;
+                        },
+                        footer: function(tooltipItems) {
+                            // Find all items with the same timestamp and show min/max/mean
+                            if (tooltipItems.length > 0) {
+                                const sensorId = tooltipItems[0].dataset.label.split(' ')[0];
+                                let min, mean, max;
+                                
+                                for (const item of tooltipItems) {
+                                    const label = item.dataset.label;
+                                    if (label.includes(sensorId)) {
+                                        if (label.includes('Min')) {
+                                            min = item.parsed.y.toFixed(2);
+                                        } else if (label.includes('Mean')) {
+                                            mean = item.parsed.y.toFixed(2);
+                                        } else if (label.includes('Max')) {
+                                            max = item.parsed.y.toFixed(2);
+                                        }
+                                    }
+                                }
+                                
+                                if (min && mean && max) {
+                                    return `Range: ${min} - ${max} ${unit}`;
+                                }
+                            }
+                            return null;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Generate random color for chart lines
 function getRandomColor() {
     const colors = [
@@ -305,6 +571,34 @@ function getRandomColor() {
         '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
     ];
     return colors[Math.floor(Math.random() * colors.length)];
+}
+
+// Toggle between raw and aggregated data views
+function toggleDataView(view) {
+    const rawDataView = document.getElementById('raw-data-view');
+    const aggregatedDataView = document.getElementById('aggregated-data-view');
+    const rawDataTab = document.getElementById('raw-data-tab');
+    const aggregatedDataTab = document.getElementById('aggregated-data-tab');
+    
+    currentDataView = view;
+    
+    if (view === 'raw') {
+        rawDataView.classList.add('active');
+        aggregatedDataView.classList.remove('active');
+        rawDataTab.classList.add('active');
+        aggregatedDataTab.classList.remove('active');
+        
+        // Refresh raw data view
+        loadReadings();
+    } else {
+        rawDataView.classList.remove('active');
+        aggregatedDataView.classList.add('active');
+        rawDataTab.classList.remove('active');
+        aggregatedDataTab.classList.add('active');
+        
+        // Refresh aggregated data view
+        loadAggregatedReadings();
+    }
 }
 
 // Event listeners
@@ -317,11 +611,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle filter form submission
     document.getElementById('filter-form').addEventListener('submit', (event) => {
         event.preventDefault();
-        loadReadings();
+        
+        // Load data based on current view
+        if (currentDataView === 'raw') {
+            loadReadings();
+        } else {
+            loadAggregatedReadings();
+        }
+    });
+    
+    // Add event listeners for tab buttons
+    document.getElementById('raw-data-tab').addEventListener('click', () => {
+        toggleDataView('raw');
+    });
+    
+    document.getElementById('aggregated-data-tab').addEventListener('click', () => {
+        toggleDataView('aggregated');
     });
     
     // Auto-refresh every 30 seconds
     setInterval(() => {
-        loadReadings();
+        if (currentDataView === 'raw') {
+            loadReadings();
+        } else {
+            loadAggregatedReadings();
+        }
     }, 30000);
 });
